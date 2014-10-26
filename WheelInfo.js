@@ -1,9 +1,9 @@
-var Vec3 = require('../math/Vec3');
+/*var Vec3 = require('../math/Vec3');
 var Transform = require('../math/Transform');
 var RaycastResult = require('../collision/RaycastResult');
 var Utils = require('../utils/Utils');
 
-module.exports = WheelInfo;
+module.exports = WheelInfo;*/
 
 /**
  * @class WheelInfo
@@ -40,12 +40,12 @@ module.exports = WheelInfo;
  */
 function WheelInfo(options){
     options = Utils.defaults(options, {
-        chassisConnectionPointLocal: new Vec3(),
-        chassisConnectionPointWorld: new Vec3(),
-        directionLocal: new Vec3(),
-        directionWorld: new Vec3(),
-        axleLocal: new Vec3(),
-        axleWorld: new Vec3(),
+        chassisConnectionPointLocal: new CANNON.Vec3(),
+        chassisConnectionPointWorld: new CANNON.Vec3(),
+        directionLocal: new CANNON.Vec3(),
+        directionWorld: new CANNON.Vec3(),
+        axleLocal: new CANNON.Vec3(),
+        axleWorld: new CANNON.Vec3(),
         suspensionRestLength: 1,
         suspensionMaxLength: 2,
         radius: 1,
@@ -238,7 +238,7 @@ function WheelInfo(options){
      * The result from raycasting
      * @property {RaycastResult} raycastResult
      */
-    this.raycastResult = new RaycastResult();
+    this.raycastResult = new CANNON.RaycastResult();
 
     /**
      * Wheel world transform
@@ -252,9 +252,9 @@ function WheelInfo(options){
     this.isInContact = false;
 }
 
-var chassis_velocity_at_contactPoint = new Vec3();
-var relpos = new Vec3();
-var chassis_velocity_at_contactPoint = new Vec3();
+var chassis_velocity_at_contactPoint = new CANNON.Vec3();
+var relpos = new CANNON.Vec3();
+var chassis_velocity_at_contactPoint = new CANNON.Vec3();
 WheelInfo.prototype.updateWheel = function(chassis){
     var raycastResult = this.raycastResult;
 

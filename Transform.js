@@ -1,7 +1,8 @@
-var Vec3 = require('./Vec3');
+/*var Vec3 = require('./Vec3');
 var Quaternion = require('./Quaternion');
 
 module.exports = Transform;
+*/
 
 /**
  * @class Transform
@@ -11,15 +12,15 @@ function Transform() {
 	/**
 	 * @property {Vec3} position
 	 */
-	this.position = new Vec3();
+	this.position = new CANNON.Vec3();
 	
 	/**
 	 * @property {Quaternion} quaternion
 	 */
-	this.quaternion = new Quaternion();
+	this.quaternion = new CANNON.Quaternion();
 }
 
-var tmpQuat = new Quaternion();
+var tmpQuat = new CANNON.Quaternion();
 
 /**
  * @static
@@ -30,7 +31,7 @@ var tmpQuat = new Quaternion();
  * @param {Vec3} result
  */
 Transform.pointToLocalFrame = function(position, quaternion, worldPoint, result){
-    var result = result || new Vec3();
+    var result = result || new CANNON.Vec3();
     worldPoint.vsub(position, result);
     quaternion.conjugate(tmpQuat);
     tmpQuat.vmult(result, result);
@@ -46,20 +47,20 @@ Transform.pointToLocalFrame = function(position, quaternion, worldPoint, result)
  * @param {Vec3} result
  */
 Transform.pointToWorldFrame = function(position, quaternion, localPoint, result){
-    var result = result || new Vec3();
+    var result = result || new CANNON.Vec3();
     quaternion.vmult(localPoint, result);
     result.vadd(position, result);
     return result;
 };
 
 Transform.prototype.vectorToWorldFrame = function(localVector, result){
-    var result = result || new Vec3();
+    var result = result || new CANNON.Vec3();
     this.quaternion.vmult(localVector, result);
     return result;
 };
 
 Transform.vectorToLocalFrame = function(position, quaternion, worldVector, result){
-    var result = result || new Vec3();
+    var result = result || new CANNON.Vec3();
     quaternion.w *= -1;
     quaternion.vmult(worldVector, result);
     quaternion.w *= -1;

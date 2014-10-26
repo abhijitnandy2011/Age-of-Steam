@@ -1,6 +1,6 @@
 function Utils(){}
 
-module.exports = Utils;
+//module.exports = Utils;
 
 /**
  * Extend an options object with default values.

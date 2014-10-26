@@ -1,15 +1,16 @@
-var Body = require('./Body');
+/*var Body = require('./Body');
 var Vec3 = require('../math/Vec3');
 var Quaternion = require('../math/Quaternion');
 var RaycastResult = require('../collision/RaycastResult');
 var Ray = require('../collision/Ray');
 var WheelInfo = require('../objects/WheelInfo');
 
-module.exports = RaycastVehicle;
+module.exports = Locomotive;
+*/
 
 /**
  * Vehicle helper class that casts rays from the wheel positions towards the ground and applies forces.
- * @class RaycastVehicle
+ * @class Locomotive
  * @constructor
  * @param {object} [options]
  * @param {Body} [options.chassisBody] The car chassis body.
@@ -17,7 +18,7 @@ module.exports = RaycastVehicle;
  * @param {integer} [options.indexLeftAxis]
  * @param {integer} [options.indexUpAxis]
  */
-function RaycastVehicle(options){
+function Locomotive(options){
 
     /**
      * @property {Body} chassisBody
@@ -61,22 +62,29 @@ function RaycastVehicle(options){
      * @default 2
      */
     this.indexUpAxis = typeof(options.indexUpAxis) !== 'undefined' ? options.indexUpAxis : 2;
+
+    this.m_bDerailed = false;
+
+    this.derailDeviation = 0.4;
 }
 
+/*
 var tmpVec1 = new Vec3();
 var tmpVec2 = new Vec3();
 var tmpVec3 = new Vec3();
-var tmpVec4 = new Vec3();
-var tmpVec5 = new Vec3();
-var tmpVec6 = new Vec3();
-var tmpRay = new Ray();
+*/
+var tmpVec4 = new CANNON.Vec3();
+var tmpVec5 = new CANNON.Vec3();
+var tmpVec6 = new CANNON.Vec3();
+//var tmpRay = new CANNON.Ray();
+
 
 /**
  * Add a wheel. For information about the options, see WheelInfo.
  * @method addWheel
  * @param {object} [options]
  */
-RaycastVehicle.prototype.addWheel = function(options){
+Locomotive.prototype.addWheel = function(options){
     options = options || {};
 
     var info = new WheelInfo(options);
@@ -92,12 +100,12 @@ RaycastVehicle.prototype.addWheel = function(options){
  * @param {number} value
  * @param {integer} wheelIndex
  */
-RaycastVehicle.prototype.setSteeringValue = function(value, wheelIndex){
+Locomotive.prototype.setSteeringValue = function(value, wheelIndex){
     var wheel = this.wheelInfos[wheelIndex];
     wheel.steering = value;
 };
 
-var torque = new Vec3();
+var torque = new CANNON.Vec3();
 
 /**
  * Set the wheel force to apply on one of the wheels each time step
@@ -105,7 +113,7 @@ var torque = new Vec3();
  * @param  {number} value
  * @param  {integer} wheelIndex
  */
-RaycastVehicle.prototype.applyEngineForce = function(value, wheelIndex){
+Locomotive.prototype.applyEngineForce = function(value, wheelIndex){
     this.wheelInfos[wheelIndex].engineForce = value;
 };
 
@@ -115,7 +123,7 @@ RaycastVehicle.prototype.applyEngineForce = function(value, wheelIndex){
  * @param {number} brake
  * @param {integer} wheelIndex
  */
-RaycastVehicle.prototype.setBrake = function(brake, wheelIndex){
+Locomotive.prototype.setBrake = function(brake, wheelIndex){
     this.wheelInfos[wheelIndex].brake = brake;
 };
 
@@ -124,7 +132,7 @@ RaycastVehicle.prototype.setBrake = function(brake, wheelIndex){
  * @method addToWorld
  * @param {World} world
  */
-RaycastVehicle.prototype.addToWorld = function(world){
+Locomotive.prototype.addToWorld = function(world){
     var constraints = this.constraints;
     world.add(this.chassisBody);
     var that = this;
@@ -141,7 +149,7 @@ RaycastVehicle.prototype.addToWorld = function(world){
  * @param  {integer} axisIndex
  * @param  {Vec3} result
  */
-RaycastVehicle.prototype.getVehicleAxisWorld = function(axisIndex, result){
+Locomotive.prototype.getVehicleAxisWorld = function(axisIndex, result){
     result.set(
         axisIndex === 0 ? 1 : 0,
         axisIndex === 1 ? 1 : 0,
@@ -150,7 +158,7 @@ RaycastVehicle.prototype.getVehicleAxisWorld = function(axisIndex, result){
     this.chassisBody.vectorToWorldFrame(result, result);
 };
 
-RaycastVehicle.prototype.updateVehicle = function(timeStep){
+Locomotive.prototype.updateVehicle = function(timeStep){
     var wheelInfos = this.wheelInfos;
     var numWheels = wheelInfos.length;
     var chassisBody = this.chassisBody;
@@ -161,7 +169,26 @@ RaycastVehicle.prototype.updateVehicle = function(timeStep){
 
     this.currentVehicleSpeedKmHour = 3.6 * chassisBody.velocity.norm();
 
-    var forwardWorld = new Vec3();
+    if (this.maxSpeed == undefined || this.maxSpeed < this.currentVehicleSpeedKmHour) {
+        this.maxSpeed = this.currentVehicleSpeedKmHour;
+    }
+
+    if (this.maxNegDev == undefined || this.deviation < this.maxNegDev) {
+        this.maxNegDev = this.deviation;
+    }
+
+    if (this.maxPosDev == undefined || this.deviation > this.maxPosDev) {
+        this.maxPosDev = this.deviation;
+    }
+
+    if (this.m_bDerailed) {
+         console.log("Derailed !!!");
+    }
+    else {
+        console.log("MaxPosDev:" + this.maxPosDev + " MaxNegDev:" + this.maxNegDev + " Max: "  + this.maxSpeed + " Speed: " + this.currentVehicleSpeedKmHour)
+    }
+
+    var forwardWorld = new CANNON.Vec3();
     this.getVehicleAxisWorld(this.indexForwardAxis, forwardWorld);
 
     if (forwardWorld.dot(chassisBody.velocity) < 0){
@@ -175,8 +202,17 @@ RaycastVehicle.prototype.updateVehicle = function(timeStep){
 
     this.updateSuspension(timeStep);
 
-    var impulse = new Vec3();
-    var relpos = new Vec3();
+    var rightWorld = new CANNON.Vec3();
+    this.getVehicleAxisWorld(this.indexRightAxis, rightWorld);
+
+    var impulse = new CANNON.Vec3();
+    var relpos = new CANNON.Vec3();
+
+    var szBase = 500;
+    var trackCenterWS = new CANNON.Vec3(0, -(szBase + 11), 0);
+    var frontAxleMidWS = chassisBody.pointToWorldFrame(new CANNON.Vec3(1, 0, 0));
+    var backAxleMidWS = chassisBody.pointToWorldFrame(new CANNON.Vec3(-1, 0, 0));
+
     for (var i = 0; i < numWheels; i++) {
         //apply suspension force
         var wheel = wheelInfos[i];
@@ -188,13 +224,48 @@ RaycastVehicle.prototype.updateVehicle = function(timeStep){
 
         wheel.raycastResult.hitPointWorld.vsub(chassisBody.position, relpos);
         chassisBody.applyImpulse(impulse, wheel.raycastResult.hitPointWorld/*relpos*/);
+
+        // Middle of front axle
+        if ( !this.m_bDerailed && i == 0 && wheel.isInContact) {
+            trackCenterWS.z = frontAxleMidWS.z;
+            currentRadius = frontAxleMidWS.distanceTo(trackCenterWS); // optimize diatancing squared, only x2 + y2 needed
+
+            this.deviation = szBase + 11 - currentRadius;
+            if (Math.abs(this.deviation) > this.derailDeviation) {
+                this.m_bDerailed = true;
+                break;
+            }
+
+            impulse = rightWorld.scale( this.deviation * 1000 );
+            impulse.z=0;
+            chassisBody.applyImpulse(impulse, frontAxleMidWS);
+        }
+
+        // Middle of back axle
+        if ( !this.m_bDerailed && i == 2 && wheel.isInContact) {
+            trackCenterWS.z = backAxleMidWS.z;
+            currentRadius = backAxleMidWS.distanceTo(trackCenterWS);
+
+            this.deviation = szBase + 11 - currentRadius;
+            if (Math.abs(this.deviation) > this.derailDeviation) {
+                this.m_bDerailed = true;
+                break;
+            }
+
+            impulse = rightWorld.scale( this.deviation * 1000 );
+            impulse.z=0;
+            chassisBody.applyImpulse(impulse, backAxleMidWS);
+        }
+
     }
 
     this.updateFriction(timeStep);
 
-    var hitNormalWorldScaledWithProj = new Vec3();
-    var fwd  = new Vec3();
-    var vel = new Vec3();
+
+
+    var hitNormalWorldScaledWithProj = new CANNON.Vec3();
+    var fwd  = new CANNON.Vec3();
+    var vel = new CANNON.Vec3();
     for (i = 0; i < numWheels; i++) {
         var wheel = wheelInfos[i];
         //var relpos = new Vec3();
@@ -236,7 +307,7 @@ RaycastVehicle.prototype.updateVehicle = function(timeStep){
     }
 };
 
-RaycastVehicle.prototype.updateSuspension = function(deltaTime) {
+Locomotive.prototype.updateSuspension = function(deltaTime) {
     var chassisBody = this.chassisBody;
     var chassisMass = chassisBody.mass;
     var wheelInfos = this.wheelInfos;
@@ -280,16 +351,16 @@ RaycastVehicle.prototype.updateSuspension = function(deltaTime) {
  * @method removeFromWorld
  * @param {World} world
  */
-RaycastVehicle.prototype.removeFromWorld = function(world){
+Locomotive.prototype.removeFromWorld = function(world){
     var constraints = this.constraints;
     world.remove(this.chassisBody);
     world.removeEventListener('preStep', this.updateVehicle);
     this.world = null;
 };
 
-var castRay_rayvector = new Vec3();
-var castRay_target = new Vec3();
-RaycastVehicle.prototype.castRay = function(wheel) {
+var castRay_rayvector = new CANNON.Vec3();
+var castRay_target = new CANNON.Vec3();
+Locomotive.prototype.castRay = function(wheel) {
     var rayvector = castRay_rayvector;
     var target = castRay_target;
 
@@ -341,7 +412,7 @@ RaycastVehicle.prototype.castRay = function(wheel) {
 
         var denominator = wheel.raycastResult.hitNormalWorld.dot(wheel.directionWorld);
 
-        var chassis_velocity_at_contactPoint = new Vec3();
+        var chassis_velocity_at_contactPoint = new CANNON.Vec3();
         chassisBody.getVelocityAtWorldPoint(wheel.raycastResult.hitPointWorld, chassis_velocity_at_contactPoint);
 
         var projVel = wheel.raycastResult.hitNormalWorld.dot( chassis_velocity_at_contactPoint );
@@ -367,7 +438,7 @@ RaycastVehicle.prototype.castRay = function(wheel) {
     return depth;
 };
 
-RaycastVehicle.prototype.updateWheelTransformWorld = function(wheel){
+Locomotive.prototype.updateWheelTransformWorld = function(wheel){
     wheel.isInContact = false;
     var chassisBody = this.chassisBody;
     chassisBody.pointToWorldFrame(wheel.chassisConnectionPointLocal, wheel.chassisConnectionPointWorld);
@@ -375,7 +446,7 @@ RaycastVehicle.prototype.updateWheelTransformWorld = function(wheel){
     chassisBody.vectorToWorldFrame(wheel.axleLocal, wheel.axleWorld);
 };
 
-RaycastVehicle.prototype.updateWheelTransform = function(wheelIndex){
+Locomotive.prototype.updateWheelTransform = function(wheelIndex){
     var up = tmpVec4;
     var right = tmpVec5;
     var fwd = tmpVec6;
@@ -391,10 +462,10 @@ RaycastVehicle.prototype.updateWheelTransform = function(wheelIndex){
 
     // Rotate around steering over the wheelAxle
     var steering = wheel.steering;
-    var steeringOrn = new Quaternion();
+    var steeringOrn = new CANNON.Quaternion();
     steeringOrn.setFromAxisAngle(up, steering);
 
-    var rotatingOrn = new Quaternion();
+    var rotatingOrn = new CANNON.Quaternion();
     rotatingOrn.setFromAxisAngle(right, wheel.rotation);
 
     // World rotation of the wheel
@@ -412,9 +483,9 @@ RaycastVehicle.prototype.updateWheelTransform = function(wheelIndex){
 };
 
 var directions = [
-    new Vec3(1, 0, 0),
-    new Vec3(0, 1, 0),
-    new Vec3(0, 0, 1)
+    new CANNON.Vec3(1, 0, 0),
+    new CANNON.Vec3(0, 1, 0),
+    new CANNON.Vec3(0, 0, 1)
 ];
 
 /**
@@ -423,16 +494,16 @@ var directions = [
  * @param  {integer} wheelIndex
  * @return {Transform}
  */
-RaycastVehicle.prototype.getWheelTransformWorld = function(wheelIndex) {
+Locomotive.prototype.getWheelTransformWorld = function(wheelIndex) {
     return this.wheelInfos[wheelIndex].worldTransform;
 };
 
 
-var updateFriction_surfNormalWS_scaled_proj = new Vec3();
+var updateFriction_surfNormalWS_scaled_proj = new CANNON.Vec3();
 var updateFriction_axle = [];
 var updateFriction_forwardWS = [];
 var sideFrictionStiffness2 = 1;
-RaycastVehicle.prototype.updateFriction = function(timeStep) {
+Locomotive.prototype.updateFriction = function(timeStep) {
     var surfNormalWS_scaled_proj = updateFriction_surfNormalWS_scaled_proj;
 
     //calculate the impulse, so that the wheels don't move sidewards
@@ -455,10 +526,10 @@ RaycastVehicle.prototype.updateFriction = function(timeStep) {
         wheel.sideImpulse = 0;
         wheel.forwardImpulse = 0;
         if(!forwardWS[i]){
-            forwardWS[i] = new Vec3();
+            forwardWS[i] = new CANNON.Vec3();
         }
         if(!axle[i]){
-            axle[i] = new Vec3();
+            axle[i] = new CANNON.Vec3();
         }
     }
 
@@ -569,13 +640,13 @@ RaycastVehicle.prototype.updateFriction = function(timeStep) {
     for (var i = 0; i < numWheels; i++) {
         var wheel = wheelInfos[i];
 
-        var rel_pos = new Vec3();
+        var rel_pos = new CANNON.Vec3();
         //wheel.raycastResult.hitPointWorld.vsub(chassisBody.position, rel_pos);
         // cannons applyimpulse is using world coord for the position
         rel_pos.copy(wheel.raycastResult.hitPointWorld);
 
         if (wheel.forwardImpulse !== 0) {
-            var impulse = new Vec3();
+            var impulse = new CANNON.Vec3();
             forwardWS[i].scale(wheel.forwardImpulse, impulse);
             chassisBody.applyImpulse(impulse, rel_pos);
         }
@@ -583,10 +654,10 @@ RaycastVehicle.prototype.updateFriction = function(timeStep) {
         if (wheel.sideImpulse !== 0){
             var groundObject = wheel.raycastResult.body;
 
-            var rel_pos2 = new Vec3();
+            var rel_pos2 = new CANNON.Vec3();
             //wheel.raycastResult.hitPointWorld.vsub(groundObject.position, rel_pos2);
             rel_pos2.copy(wheel.raycastResult.hitPointWorld);
-            var sideImp = new Vec3();
+            var sideImp = new CANNON.Vec3();
             axle[i].scale(wheel.sideImpulse, sideImp);
 
             // Scale the relative position in the up direction with rollInfluence.
@@ -603,9 +674,9 @@ RaycastVehicle.prototype.updateFriction = function(timeStep) {
     }
 };
 
-var calcRollingFriction_vel1 = new Vec3();
-var calcRollingFriction_vel2 = new Vec3();
-var calcRollingFriction_vel = new Vec3();
+var calcRollingFriction_vel1 = new CANNON.Vec3();
+var calcRollingFriction_vel2 = new CANNON.Vec3();
+var calcRollingFriction_vel = new CANNON.Vec3();
 
 function calcRollingFriction(body0, body1, frictionPosWorld, frictionDirectionWorld, maxImpulse) {
     var j1 = 0;
@@ -643,10 +714,10 @@ function calcRollingFriction(body0, body1, frictionPosWorld, frictionDirectionWo
     return j1;
 }
 
-var computeImpulseDenominator_r0 = new Vec3();
-var computeImpulseDenominator_c0 = new Vec3();
-var computeImpulseDenominator_vec = new Vec3();
-var computeImpulseDenominator_m = new Vec3();
+var computeImpulseDenominator_r0 = new CANNON.Vec3();
+var computeImpulseDenominator_c0 = new CANNON.Vec3();
+var computeImpulseDenominator_vec = new CANNON.Vec3();
+var computeImpulseDenominator_m = new CANNON.Vec3();
 function computeImpulseDenominator(body, pos, normal) {
     var r0 = computeImpulseDenominator_r0;
     var c0 = computeImpulseDenominator_c0;
@@ -662,9 +733,9 @@ function computeImpulseDenominator(body, pos, normal) {
 }
 
 
-var resolveSingleBilateral_vel1 = new Vec3();
-var resolveSingleBilateral_vel2 = new Vec3();
-var resolveSingleBilateral_vel = new Vec3();
+var resolveSingleBilateral_vel1 = new CANNON.Vec3();
+var resolveSingleBilateral_vel2 = new CANNON.Vec3();
+var resolveSingleBilateral_vel = new CANNON.Vec3();
 
 //bilateral constraint between two dynamic objects
 function resolveSingleBilateral(body1, pos1, body2, pos2, normal, impulse){

@@ -39,7 +39,7 @@ CANNON.Demo = function(options){
         contacts: false,  // Contact points
         cm2contact: false, // center of mass to contact points
         normals: false, // contact normals
-        axes: false, // "local" frame axes
+        axes: true, // "local" frame axes
         particleSize: 0.1,
         shadows: false,
         aabbs: false,
@@ -136,6 +136,27 @@ CANNON.Demo = function(options){
         mesh.add(lineZ);
         return mesh;
     });
+    var originAxesMeshCache = new GeometryCache(function(){
+        var mesh = new THREE.Object3D();
+        //mesh.useQuaternion = true;
+        var origin = new THREE.Vector3(0,0,0);
+        var gX = new THREE.Geometry();
+        var gY = new THREE.Geometry();
+        var gZ = new THREE.Geometry();
+        gX.vertices.push(origin);
+        gY.vertices.push(origin);
+        gZ.vertices.push(origin);
+        gX.vertices.push(new THREE.Vector3(10,0,0));
+        gY.vertices.push(new THREE.Vector3(0,10,0));
+        gZ.vertices.push(new THREE.Vector3(0,0,10));
+        var lineX = new THREE.Line( gX, new THREE.LineBasicMaterial({color:0xff0000}));
+        var lineY = new THREE.Line( gY, new THREE.LineBasicMaterial({color:0x00ff00}));
+        var lineZ = new THREE.Line( gZ, new THREE.LineBasicMaterial({color:0x0000ff}));
+        mesh.add(lineX);
+        mesh.add(lineY);
+        mesh.add(lineZ);
+        return mesh;
+    });
     function restartGeometryCaches(){
         contactMeshCache.restart();
         contactMeshCache.hideCached();
@@ -173,6 +194,7 @@ CANNON.Demo = function(options){
     }
 
     var light, scene, ambient, stats, info;
+    var targetFollowing = false;
 
     function setRenderMode(mode){
         if(renderModes.indexOf(mode) === -1){
@@ -267,7 +289,14 @@ CANNON.Demo = function(options){
             if(b.quaternion){
                 visual.quaternion.copy(b.quaternion);
             }
+
+            if (i == 0 && targetFollowing) {
+                 light.target.position.copy(visuals[0].position);
+                 controls.target.copy(visuals[0].position);
+            }
         }
+
+
 
         // Render contacts
         contactMeshCache.restart();
@@ -375,6 +404,7 @@ CANNON.Demo = function(options){
 
         // Frame axes for each body
         axesMeshCache.restart();
+        originAxesMeshCache.restart();
         if(settings.axes){
             for(var bi=0; bi<bodies.length; bi++){
                 var b = bodies[bi], mesh=axesMeshCache.request();
@@ -383,7 +413,12 @@ CANNON.Demo = function(options){
                     mesh.quaternion.copy(b.quaternion);
                 }
             }
+
+            mesh=originAxesMeshCache.request();
+            //mesh.position.copy();
         }
+
+        originAxesMeshCache.hideCached();
         axesMeshCache.hideCached();
 
         // AABBs
@@ -481,6 +516,7 @@ CANNON.Demo = function(options){
 
         scene.add( light );
         scene.add( camera );
+
 
         // RENDERER
         renderer = new THREE.WebGLRenderer( { clearColor: 0x000000, clearAlpha: 1, antialias: false } );
@@ -672,7 +708,7 @@ CANNON.Demo = function(options){
         }
 
         // Trackball controls
-        controls = new THREE.TrackballControls( camera, renderer.domElement );
+        /*controls = new THREE.TrackballControls( camera, renderer.domElement );
         controls.rotateSpeed = 1.0;
         controls.zoomSpeed = 1.2;
         controls.panSpeed = 0.2;
@@ -685,7 +721,22 @@ CANNON.Demo = function(options){
         controls.maxDistance = radius * 1000;
         //controls.keys = [ 65, 83, 68 ]; // [ rotateKey, zoomKey, panKey ]
         controls.screen.width = SCREEN_WIDTH;
-        controls.screen.height = SCREEN_HEIGHT;
+        controls.screen.height = SCREEN_HEIGHT;*/
+
+        // Orbit controls
+        controls = new THREE.OrbitControls( camera, renderer.domElement );
+        controls.rotateSpeed = 1.0;
+        controls.zoomSpeed = 1.2;
+        controls.keyPanSpeed = 0.2;
+        controls.noZoom = false;
+        controls.noPan = false;
+        controls.staticMoving = true;
+        controls.dynamicDampingFactor = 0.3;
+        var radius = 100;
+        controls.minDistance = 0.0;
+        controls.maxDistance = 800;
+        //controls.minPolarAngle = Math.PI/4;
+        controls.maxPolarAngle = Math.PI/3 + Math.PI/8;
     }
 
     var t = 0, newTime, delta;
@@ -744,6 +795,7 @@ CANNON.Demo = function(options){
     function render(){
         controls.update();
         renderer.clear();
+
         renderer.render( that.scene, camera );
     }
 
@@ -792,6 +844,13 @@ CANNON.Demo = function(options){
                 idx = idx % renderModes.length; // begin at 0 if we exceeded number of modes
                 setRenderMode(renderModes[idx]);
                 updategui();
+                break;
+
+            case 111: // o - toggle camera to target following or origin
+                targetFollowing = !targetFollowing;
+                /*if (!targetFollowing) {
+                    controls.target.copy(new CANNON.Vec3(0,0,0));
+                }*/
                 break;
 
             case 49:

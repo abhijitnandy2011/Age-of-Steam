@@ -11,14 +11,19 @@
     <script src="js/dat.gui.js"></script>
     <script src="js/Three.js"></script>
     <script src="js/TrackballControls.js"></script>
+    <script src="js/OrbitControls.js"></script>
     <script src="js/Detector.js"></script>
     <script src="js/Stats.js"></script>
     <script src="js/smoothie.js"></script>
+    <script src="Utils.js"></script>
+    <script src="Transform.js"></script>
+    <script src="WheelInfo.js"></script>
+    <script src="Loco.js"></script>
     <script>
 
         var demo = new CANNON.Demo();
         var mass = 150;
-        var vehicle;
+        var myLoco;
 
         demo.addScene("car",function(){
             var world = demo.getWorld();
@@ -37,13 +42,7 @@
             // We must add the contact materials to the world
             world.addContactMaterial(wheelGroundContactMaterial);
 
-            var chassisShape;
-            chassisShape = new CANNON.Box(new CANNON.Vec3(2, 1,0.5));
-            var chassisBody = new CANNON.Body({ mass: mass });
-            chassisBody.addShape(chassisShape);
-            chassisBody.position.set(0, 0, 4);
-            chassisBody.angularVelocity.set(0, 0, 0.5);
-            demo.addVisual(chassisBody);
+            // ---------------- Loco code ----------------------
 
             var options = {
                 radius: 0.5,
@@ -62,46 +61,56 @@
                 useCustomSlidingRotationalSpeed: true
             };
 
-            // Create the vehicle
-            vehicle = new CANNON.RaycastVehicle({
-                chassisBody: chassisBody,
+            var locoChassisShape;
+            locoChassisShape = new CANNON.Box(new CANNON.Vec3(2, 1,0.5));
+            var locoChassisBody = new CANNON.Body({ mass: mass });
+            locoChassisBody.addShape(locoChassisShape);
+            locoChassisBody.position.set(0, 0, 6);
+            locoChassisBody.angularVelocity.set(0, 0, 0.1);
+            demo.addVisual(locoChassisBody);
+
+            // Create the loco
+            myLoco = new Locomotive({
+                chassisBody: locoChassisBody,
             });
 
             options.chassisConnectionPointLocal.set(1, 1, 0);
-            vehicle.addWheel(options);
+            myLoco.addWheel(options);
 
             options.chassisConnectionPointLocal.set(1, -1, 0);
-            vehicle.addWheel(options);
+            myLoco.addWheel(options);
 
             options.chassisConnectionPointLocal.set(-1, 1, 0);
-            vehicle.addWheel(options);
+            myLoco.addWheel(options);
 
             options.chassisConnectionPointLocal.set(-1, -1, 0);
-            vehicle.addWheel(options);
+            myLoco.addWheel(options);
 
-            vehicle.addToWorld(world);
+            myLoco.addToWorld(world);
 
-            var wheelBodies = [];
-            for(var i=0; i<vehicle.wheelInfos.length; i++){
-                var wheel = vehicle.wheelInfos[i];
+            var locoWheelBodies = [];
+            for(var i=0; i< myLoco.wheelInfos.length; i++){
+                var wheel = myLoco.wheelInfos[i];
                 var cylinderShape = new CANNON.Cylinder(wheel.radius, wheel.radius, wheel.radius / 2, 20);
                 var wheelBody = new CANNON.Body({ mass: 1 });
                 var q = new CANNON.Quaternion();
                 q.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2);
                 wheelBody.addShape(cylinderShape, new CANNON.Vec3(), q);
-                wheelBodies.push(wheelBody);
+                locoWheelBodies.push(wheelBody);
                 demo.addVisual(wheelBody);
             }
 
             // Update wheels
             world.addEventListener('postStep', function(){
-                for (var i = 0; i < vehicle.wheelInfos.length; i++) {
-                    vehicle.updateWheelTransform(i);
-                    var t = vehicle.wheelInfos[i].worldTransform;
-                    wheelBodies[i].position.copy(t.position);
-                    wheelBodies[i].quaternion.copy(t.quaternion);
+                for (var i = 0; i < myLoco.wheelInfos.length; i++) {
+                    myLoco.updateWheelTransform(i);
+                    var t = myLoco.wheelInfos[i].worldTransform;
+                    locoWheelBodies[i].position.copy(t.position);
+                    locoWheelBodies[i].quaternion.copy(t.quaternion);
                 }
             });
+
+            // --------------  Ground Object (Plane/Heightfield) --------------------
 
             var matrix = [];
             var sizeX = 64,
@@ -117,15 +126,57 @@
                 }
             }
 
-            var hfShape = new CANNON.Heightfield(matrix, {
-                elementSize: 100 / sizeX
-            });
+            /*var hfShape = new CANNON.Heightfield(matrix, {
+                elementSize: 256 / sizeX
+            });*/
+
+            hfShape = new CANNON.Box(new CANNON.Vec3(700, 700, 0.1));
+
             var hfBody = new CANNON.Body({ mass: 0 });
             hfBody.addShape(hfShape);
-            hfBody.position.set(-sizeX * hfShape.elementSize / 2, -sizeY * hfShape.elementSize / 2, -1);
+            //hfBody.position.set(-128, -230, -0.1);
+            hfBody.position.set(-150, -500, -0.1);
             world.add(hfBody);
             demo.addVisual(hfBody);
+
+            // ----------------------------- Draw Track geometry ---------------------------------
+
+            var szBase = 500;
+            var radius   = szBase + 10,
+                segments = szBase + 14,
+                material = new THREE.LineBasicMaterial( { color: 0xffffff } ),
+                innerLineGeometry = new THREE.CircleGeometry( radius, segments );
+
+            // Remove center vertex
+            innerLineGeometry.vertices.shift();
+
+            for (var i = 0; i < innerLineGeometry.vertices.length; i++)
+            {
+                innerLineGeometry.vertices[i].y = innerLineGeometry.vertices[i].y -  (szBase + 11);
+            }
+            demo.scene.add( new THREE.Line( innerLineGeometry, material ) );
+
+            radius   = szBase + 12,
+            outerLineGeometry = new THREE.CircleGeometry( radius, segments );
+            outerLineGeometry.vertices.shift();
+            for (var i = 0; i < outerLineGeometry.vertices.length; i++)
+            {
+                outerLineGeometry.vertices[i].y = outerLineGeometry.vertices[i].y - (szBase + 11);
+            }
+            demo.scene.add( new THREE.Line( outerLineGeometry, material ) );
+
+            radius   = szBase + 11,
+            material = new THREE.LineBasicMaterial( { color: 0xff8800 } ),
+            centerLineGeometry = new THREE.CircleGeometry( radius, segments );
+            centerLineGeometry.vertices.shift();
+            for (var i = 0; i < centerLineGeometry.vertices.length; i++)
+            {
+                centerLineGeometry.vertices[i].y = centerLineGeometry.vertices[i].y - (szBase + 11);
+            }
+            demo.scene.add( new THREE.Line( centerLineGeometry, material ) );
+
         });
+
 
         demo.start();
 
@@ -134,7 +185,7 @@
 
         var maxSteerVal = 0.5;
         var maxForce = 1000;
-        var brakeForce = 1000000;
+        var brakeForce = 1000;
         function handler(event){
             var up = (event.type == 'keyup');
 
@@ -142,38 +193,39 @@
                 return;
             }
 
-            vehicle.setBrake(0, 0);
-            vehicle.setBrake(0, 1);
-            vehicle.setBrake(0, 2);
-            vehicle.setBrake(0, 3);
+            myLoco.setBrake(0, 0);
+            myLoco.setBrake(0, 1);
+            myLoco.setBrake(0, 2);
+            myLoco.setBrake(0, 3);
 
             switch(event.keyCode){
 
             case 38: // forward
-                vehicle.applyEngineForce(up ? 0 : -maxForce, 2);
-                vehicle.applyEngineForce(up ? 0 : -maxForce, 3);
+                myLoco.applyEngineForce(up ? 0 : -maxForce, 2);
+                myLoco.applyEngineForce(up ? 0 : -maxForce, 3);
                 break;
 
             case 40: // backward
-                vehicle.applyEngineForce(up ? 0 : maxForce, 2);
-                vehicle.applyEngineForce(up ? 0 : maxForce, 3);
+                myLoco.applyEngineForce(up ? 0 : maxForce, 2);
+                myLoco.applyEngineForce(up ? 0 : maxForce, 3);
                 break;
 
             case 66: // b
-                vehicle.setBrake(brakeForce, 0);
-                vehicle.setBrake(brakeForce, 1);
-                vehicle.setBrake(brakeForce, 2);
-                vehicle.setBrake(brakeForce, 3);
+                myLoco.setBrake(brakeForce, 0);
+                myLoco.setBrake(brakeForce, 1);
+                myLoco.setBrake(brakeForce, 2);
+                myLoco.setBrake(brakeForce, 3);
+                myLoco.applyEngineForce(0);
                 break;
 
             case 39: // right
-                vehicle.setSteeringValue(up ? 0 : -maxSteerVal, 0);
-                vehicle.setSteeringValue(up ? 0 : -maxSteerVal, 1);
+                myLoco.setSteeringValue(up ? 0 : -maxSteerVal, 0);
+                myLoco.setSteeringValue(up ? 0 : -maxSteerVal, 1);
                 break;
 
             case 37: // left
-                vehicle.setSteeringValue(up ? 0 : maxSteerVal, 0);
-                vehicle.setSteeringValue(up ? 0 : maxSteerVal, 1);
+                myLoco.setSteeringValue(up ? 0 : maxSteerVal, 0);
+                myLoco.setSteeringValue(up ? 0 : maxSteerVal, 1);
                 break;
 
             }

@@ -143,28 +143,29 @@
             // --------------  Ground Object (Plane/Heightfield) --------------------
 
             var matrix = [];
-            var sizeX = 64,
-                sizeY = 64;
+            var sizeX = 128,
+                sizeY = 128;
 
-            for (var i = 0; i < sizeX; i++) {
+            /*for (var i = 0; i < sizeX; i++) {
                 matrix.push([]);
                 for (var j = 0; j < sizeY; j++) {
-                    var height = Math.cos(i / sizeX * Math.PI * 5) * Math.cos(j/sizeY * Math.PI * 5) * 2 + 2;
+                    var height = Math.cos(i / sizeX * Math.PI * 5) * Math.cos(j/sizeY * Math.PI * 5) * 6 + 3;
                     if(i===0 || i === sizeX-1 || j===0 || j === sizeY-1)
-                        height = 3;
+                        height = 4;
                     matrix[i].push(height);
                 }
             }
 
-            /*var hfShape = new CANNON.Heightfield(matrix, {
-                elementSize: 256 / sizeX
-            });*/
+            var hfShape = new CANNON.Heightfield(matrix, {
+                elementSize: 1300 / sizeX
+            });
+            */
 
             hfShape = new CANNON.Box(new CANNON.Vec3(700, 700, 0.1));
 
             var hfBody = new CANNON.Body({ mass: 0 });
             hfBody.addShape(hfShape);
-            //hfBody.position.set(-128, -230, -0.1);
+            //hfBody.position.set(-580, -1200, -0.1);
             hfBody.position.set(-150, -500, -0.1);
             world.add(hfBody);
             demo.addVisual(hfBody);
@@ -214,7 +215,7 @@
         document.onkeyup = handler;
 
         var maxSteerVal = 0.5;
-        var maxForce = 1000;
+        var maxForce = 300;
         var brakeForce = 1000;
         function handler(event){
             var up = (event.type == 'keyup');

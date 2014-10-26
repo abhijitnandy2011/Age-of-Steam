@@ -24,8 +24,28 @@
         var demo = new CANNON.Demo();
         var mass = 150;
         var myLoco;
+        var debugElement, instructions;
 
         demo.addScene("car",function(){
+
+            // Instructions
+            instructions = document.createElement( 'div' );
+            instructions.style.position = 'absolute';
+            instructions.style.top = '30px';
+            instructions.style.width = '100%';
+            instructions.style.textAlign = 'center';
+            instructions.innerHTML = '<b>Keys: Up:Accelerate, Down:Decelerate, m:Change Render Mode, o:Toggle Camera </b>';
+            document.body.appendChild( instructions );
+
+            // debugElement display
+            debugElement = document.createElement( 'div' );
+            debugElement.style.position = 'absolute';
+            debugElement.style.top = '50px';
+            debugElement.style.width = '100%';
+            debugElement.style.textAlign = 'center';
+            debugElement.innerHTML = '<b>Debug</b>';
+            document.body.appendChild( debugElement );
+
             var world = demo.getWorld();
             world.broadphase = new CANNON.SAPBroadphase(world);
             world.gravity.set(0, 0, -10);
@@ -108,6 +128,16 @@
                     locoWheelBodies[i].position.copy(t.position);
                     locoWheelBodies[i].quaternion.copy(t.quaternion);
                 }
+
+                debugElement.innerHTML = '<b>' + 'Speed: ' + myLoco.currentVehicleSpeedKmHour.toFixed(2) +
+                                ' km/hr MaxSpeed: ' + myLoco.maxSpeed.toFixed(2) + ' km/hr </b>';
+
+                //debugElement.innerHTML += '<b>MaxPosDev: ' + myLoco.maxPosDev + "m MaxNegDev: " + myLoco.maxNegDev + 'm </b>';
+
+                 if (myLoco.m_bDerailed) {
+                        debugElement.innerHTML += '<b><font color =red> DERAILED !!!</font> Press F5 to restart</b>';
+                }
+
             });
 
             // --------------  Ground Object (Plane/Heightfield) --------------------

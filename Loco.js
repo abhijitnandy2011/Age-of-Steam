@@ -181,13 +181,6 @@ Locomotive.prototype.updateVehicle = function(timeStep){
         this.maxPosDev = this.deviation;
     }
 
-    if (this.m_bDerailed) {
-         console.log("Derailed !!!");
-    }
-    else {
-        console.log("MaxPosDev:" + this.maxPosDev + " MaxNegDev:" + this.maxNegDev + " Max: "  + this.maxSpeed + " Speed: " + this.currentVehicleSpeedKmHour)
-    }
-
     var forwardWorld = new CANNON.Vec3();
     this.getVehicleAxisWorld(this.indexForwardAxis, forwardWorld);
 

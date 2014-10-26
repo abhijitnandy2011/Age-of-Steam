@@ -5,4 +5,15 @@
 body {
     overflow: hidden;
     font-family: Monospace;
+    color: white;
+}
+
+/* unvisited link */
+a:link {
+    color: #FF0000;
+}
+
+/* visited link */
+a:visited {
+    color: #00FF00;
 }

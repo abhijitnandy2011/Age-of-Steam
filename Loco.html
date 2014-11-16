@@ -67,11 +67,11 @@
             var options = {
                 radius: 0.5,
                 directionLocal: new CANNON.Vec3(0, 0, -1),
-                suspensionStiffness: 30,
+                suspensionStiffness: 30,                    /// if this is too high, loco too bouncy, can derail
                 suspensionRestLength: 0.3,
                 frictionSlip: 5,
                 dampingRelaxation: 2.3,
-                dampingCompression: 4.4,
+                dampingCompression: 14.4,
                 maxSuspensionForce: 100000,
                 rollInfluence:  0.01,
                 axleLocal: new CANNON.Vec3(0, 1, 0),
@@ -86,7 +86,7 @@
             var locoChassisBody = new CANNON.Body({ mass: mass });
             locoChassisBody.addShape(locoChassisShape);
             locoChassisBody.position.set(0, 0, 6);
-            locoChassisBody.angularVelocity.set(0, 0, 0.1);
+            locoChassisBody.angularVelocity.set(0, 0, 0.1);   // this is to test if loco pushed onto line correctly at first drop
             demo.addVisual(locoChassisBody);
 
             // Create the loco
@@ -129,8 +129,8 @@
                     locoWheelBodies[i].quaternion.copy(t.quaternion);
                 }
 
-                debugElement.innerHTML = '<b>' + 'Speed: ' + myLoco.currentVehicleSpeedKmHour.toFixed(2) +
-                                ' km/hr MaxSpeed: ' + myLoco.maxSpeed.toFixed(2) + ' km/hr </b>';
+                debugElement.innerHTML = '<b>' + 'Speed: ' + myLoco.currentVehicleSpeedKmHour.toFixed(20) +
+                                ' km/hr MaxSpeed: ' + myLoco.maxSpeed.toFixed(20) + ' km/hr </b>';
 
                 //debugElement.innerHTML += '<b>MaxPosDev: ' + myLoco.maxPosDev + "m MaxNegDev: " + myLoco.maxNegDev + 'm </b>';
 
@@ -183,7 +183,8 @@
 
             for (var i = 0; i < innerLineGeometry.vertices.length; i++)
             {
-                innerLineGeometry.vertices[i].y = innerLineGeometry.vertices[i].y -  (szBase + 11);
+                innerLineGeometry.vertices[i].z = innerLineGeometry.vertices[i].z + 0.1;  // Put the line slightly above the plane to prevent rendering artifacts
+                innerLineGeometry.vertices[i].y = innerLineGeometry.vertices[i].y - (szBase + 11);
             }
             demo.scene.add( new THREE.Line( innerLineGeometry, material ) );
 
@@ -192,6 +193,7 @@
             outerLineGeometry.vertices.shift();
             for (var i = 0; i < outerLineGeometry.vertices.length; i++)
             {
+                outerLineGeometry.vertices[i].z = outerLineGeometry.vertices[i].z + 0.1;
                 outerLineGeometry.vertices[i].y = outerLineGeometry.vertices[i].y - (szBase + 11);
             }
             demo.scene.add( new THREE.Line( outerLineGeometry, material ) );
@@ -216,7 +218,7 @@
 
         var maxSteerVal = 0.5;
         var maxForce = 300;
-        var brakeForce = 1000;
+        var brakeForce = 10;
         function handler(event){
             var up = (event.type == 'keyup');
 

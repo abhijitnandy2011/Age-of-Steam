@@ -66,6 +66,8 @@ function Locomotive(options){
     this.m_bDerailed = false;
 
     this.derailDeviation = 0.4;
+    
+    this.ZERO = 1e-10;
 }
 
 /*
@@ -162,6 +164,8 @@ Locomotive.prototype.updateVehicle = function(timeStep){
     var wheelInfos = this.wheelInfos;
     var numWheels = wheelInfos.length;
     var chassisBody = this.chassisBody;
+    
+    console.log("-----------------(Step:" + this.world.stepnumber + ", Time:" + this.world.time +"," + ", dt:" + this.world.dt +")----------------");
 
     for (var i = 0; i < numWheels; i++) {
         this.updateWheelTransform(i, false);
@@ -217,11 +221,12 @@ Locomotive.prototype.updateVehicle = function(timeStep){
 
         wheel.raycastResult.hitPointWorld.vsub(chassisBody.position, relpos);
         chassisBody.applyImpulse(impulse, wheel.raycastResult.hitPointWorld/*relpos*/);
+        console.log("Suspension: Wheel " + i + " : (" + impulse.x + "," + impulse.y + "," + impulse.z + ")");
 
         // Middle of front axle
         if ( !this.m_bDerailed && i == 0 && wheel.isInContact) {
             trackCenterWS.z = frontAxleMidWS.z;
-            currentRadius = frontAxleMidWS.distanceTo(trackCenterWS); // optimize diatancing squared, only x2 + y2 needed
+            currentRadius = frontAxleMidWS.distanceTo(trackCenterWS); // optimize distancing squared, only x2 + y2 needed
 
             this.deviation = szBase + 11 - currentRadius;
             if (Math.abs(this.deviation) > this.derailDeviation) {
@@ -570,9 +575,20 @@ Locomotive.prototype.updateFriction = function(timeStep) {
         var rollingFriction = 0;
 
         wheel.slipInfo = 1;
+        var maxImpulse = 0.0;
         if (groundObject) {
-            var defaultRollingFrictionImpulse = 0;
-            var maxImpulse = wheel.brake ? wheel.brake : defaultRollingFrictionImpulse;
+        
+            if (wheel.brake){
+                var absSpeed = Math.abs(this.currentVehicleSpeedKmHour)
+                if (absSpeed < 0.5 && absSpeed > this.ZERO) {
+                    maxImpulse = wheel.brake * Math.abs(this.currentVehicleSpeedKmHour) * 0.5;
+                }
+                else if(absSpeed < this.ZERO) {
+                }
+                else {
+                    maxImpulse = wheel.brake;
+                }
+            }
 
             // btWheelContactPoint contactPt(chassisBody,groundObject,wheelInfraycastInfo.hitPointWorld,forwardWS[wheel],maxImpulse);
             // rollingFriction = calcRollingFriction(contactPt);
@@ -642,6 +658,7 @@ Locomotive.prototype.updateFriction = function(timeStep) {
             var impulse = new CANNON.Vec3();
             forwardWS[i].scale(wheel.forwardImpulse, impulse);
             chassisBody.applyImpulse(impulse, rel_pos);
+            console.log("forwardImpulse: Wheel " + i + " : (" + impulse.x + "," + impulse.y + "," + impulse.z + ")");
         }
 
         if (wheel.sideImpulse !== 0){
@@ -659,6 +676,7 @@ Locomotive.prototype.updateFriction = function(timeStep) {
             rel_pos['xyz'[this.indexUpAxis]] *= wheel.rollInfluence;
             chassisBody.pointToWorldFrame(rel_pos, rel_pos);
             chassisBody.applyImpulse(sideImp, rel_pos);
+            console.log("sideImpulse: Wheel " + i + " : (" + sideImp.x + "," + sideImp.y + "," + sideImp.z + ")");
 
             //apply friction impulse on the ground
             sideImp.scale(-1, sideImp);

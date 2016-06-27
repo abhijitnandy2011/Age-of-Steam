@@ -247,23 +247,6 @@ function createRailway(scene, json)
     var obj = rainHillTrialsRailway();
     obj.scene = scene;
     gRailway = new Railway(obj);
-
-    //var retMap = upHillTrack(scene);
-    //var retMap = archTrack(scene);
-    //var retMap = planeTrack(scene);
-    //var retMap = fullCircleTrack(scene)
-    //var retMap = simpleChairTrack(scene);
-    //var retMap = realChairTrack(scene);
-    //var retMap = crazyTrack(scene);
-
-    //gLoco = retMap.loco;
-    //gTrack = retMap.track;
-
-    // Serialize relevant properties of the track, those that cant be calc
-    // Be sure to version these
-    //var jsonString = JSON.stringify(gTrack, ["MAX_VEHICLE_SEGMENT_DIFF"], 4);
- //   var jsonString = gTrack.stringify()
-  //  console.log(jsonString)
 }
 
 // Update loco & geometry

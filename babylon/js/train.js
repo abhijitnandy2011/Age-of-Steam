@@ -77,7 +77,6 @@ Train.prototype.fromJSON = function(json)
 
     // Create vehicles
     for (idx = 0; idx < json.vehicles.length; ++idx ) {
-        var chassisHeight = 1.5;
         var wheelDrop = -1.0;
         var wheelXPos = 9.0;
         var wheelZPos = 1.5;
@@ -89,14 +88,14 @@ Train.prototype.fromJSON = function(json)
         var newVehicle = new RailVehicle({
             id: vehicleJson.id,
             type: vehicleJson.t,
-            iFrontSegment: 0,
-            frontPointWS: BABYLON.Vector3.FromArray(json.fp, 0),
+            iFrontSegment: vehicleJson.frontSeg,
+            frontPointWS: BABYLON.Vector3.FromArray(vehicleJson.fp, 0),
             track: this.track,
             train: this,
             chassisBody: chassis.clone(),
-            chassisLength: 20,
-            chassisWidth: 4,
-            chassisHeight: chassisHeight,           // Ht from base plane(same as the plane in which the line joining fp & bp lies)
+            chassisLength: json.carLen, // these will need to be made car specific later
+            chassisWidth: json.carWidth,
+            chassisHeight: json.carHt,           // Ht from base plane(same as the plane in which the line joining fp & bp lies)
             wheelInfo: [
                 {
                     wheelConnectionPoint: new BABYLON.Vector3(wheelXPos, wheelDrop, wheelZPos),
@@ -166,6 +165,7 @@ Train.prototype.updateLeadVehicleFrontSegment = function(dx)
 
     //console.debug("lead.frontPointDelta = " + lead.frontPointDelta);
 
+
     // This is very important - it ensures that when we deduct the whole of the front segment's
     // length from the distance passed to getPointFromDistanceOnSegment(), the remaining value is correct
     // getPointFromDistanceOnSegment(dx) must contain the distance covered in this segment too or we 
@@ -177,6 +177,8 @@ Train.prototype.updateLeadVehicleFrontSegment = function(dx)
     dx = Math.round(dx * FLOAT.MAX_DP_MULTPLR) / FLOAT.MAX_DP_MULTPLR;
 
     do {
+        console.debug("dx = " + dx + ", currentSegment:" + currentSegment + ", lead.fDistCoveredInFrontSegment" + lead.fDistCoveredInFrontSegment);
+        
         var pointInfo = this.track.getSegment(currentSegment).getPointFromDistanceOnSegment(dx);
 
         if (pointInfo.distLeft < FLOAT.ZERO) {
@@ -192,8 +194,9 @@ Train.prototype.updateLeadVehicleFrontSegment = function(dx)
         if (currentSegment < 0) {
             // End of the line, the currentSegment must be restored to the current front seg
             // And we must not continue hunting further for front seg
-            console.debug("End of line. currentSegment:" + currentSegment + ". Train will halt. Speed has been zeroed.");
-            
+            console.debug("End of line. currentSegment:" + currentSegment + ". Train will halt. Speed and acceleration has been zeroed.");
+            this.railway.alert("End of line. Train will halt. Speed and acceleration has been zeroed. Refresh the page to restart.");
+
             // At end-of-line, the lead vehicle front pnt has covered the entire front seg distance,
             // so fDistCoveredInFrontSegment is set to that directly. Else leaving 
             // fDistCoveredInFrontSegment = dx is incorrect as dx contains the small distance still left to cover in the hypothetical next segment - but there is no next seg, this is the last
@@ -202,6 +205,7 @@ Train.prototype.updateLeadVehicleFrontSegment = function(dx)
             // & not -1
             lead.fDistCoveredInFrontSegment = this.track.getSegment(lead.iFrontSegment).segmentLength;
             lead.frontPointWS = this.track.getSegment(lead.iFrontSegment).endPoint;
+            this.fAccel = 0;
             this.fSpeed = 0;
             return false;
         }
@@ -227,6 +231,8 @@ Train.prototype.updateLeadVehicleFrontSegment = function(dx)
     lead.fDistCoveredInFrontSegment = dx;
     lead.frontPointWS = pointInfo.pointOnSegment;
     lead.iFrontSegment = currentSegment;
+    
+    console.debug("fp(" + lead.frontPointWS.x + "," + lead.frontPointWS.y + "," + lead.frontPointWS.z + ")");
 
     return true;
 }
@@ -360,7 +366,10 @@ Train.prototype.update = function(dt, scene)
     // - other aspects
     // The vehicles can check the Train's bHaltedInPrevIterAndStillHalted to 
     // stop back seg calc.
-    this.vehicles[0].update(dt);
+    if (!this.vehicles[0].update(dt)){
+        this.bInError = true; // if vehicles[idx].update() returns false it must be an error(for now)
+        return false;
+    }
 
     // Update all remaining vehicles - now its all a search backwards
     for (idx = 1; idx < this.vehicles.length; ++idx ) {
@@ -378,4 +387,6 @@ Train.prototype.update = function(dt, scene)
             return false;
         }
     }
+
+    return true;
 }

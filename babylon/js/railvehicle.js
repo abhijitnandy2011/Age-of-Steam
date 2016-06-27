@@ -131,6 +131,8 @@ RailVehicle.prototype.updateBackSegment = function()
     // Track segment array gives sequence of segments. If engine reversed, array contents needs to be reversed in track.
     // Track array shouldnt be > 3 or 4 segments as each segment is big and we dont load the whole line at once - this makes it fast to reverse the array.
     currentSegment = this.track.getPreviousSegment(currentSegment);
+    
+   /* console.debug("fp(" + this.frontPointWS.x + "," + this.frontPointWS.y, + "," + this.frontPointWS.z + "), bp(" + this.backPointWS.x + "," + this.backPointWS.y + "," + this.backPointWS.z + "), currentSegment:" + currentSegment);*/
 
     // calculating sphere intersection
     // Try intersecting a circle centred at location of front pnt in WS &

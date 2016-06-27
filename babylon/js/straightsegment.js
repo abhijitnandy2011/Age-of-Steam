@@ -188,7 +188,8 @@ StraightSegment.prototype.getPointFromDistanceOnSegment = function(distOnSegment
     // The distance can be accomodated in this segment
     var pointOnSegment = this.startPoint.add(this.direction.scale(distOnSegment));
 
-    //console.debug("(" + pointOnSegment.x + "," + pointOnSegment.y + "," + pointOnSegment.z + ")");
+   /* console.debug("(" + pointOnSegment.x + "," + pointOnSegment.y + "," + pointOnSegment.z + ")" + 
+    " distOnSegment:" + distOnSegment);*/
     
     return {
         distLeft: 0,
@@ -225,3 +226,11 @@ StraightSegment.prototype.isBackPointWithinSegment = function(distOnSegment, len
     };
 }
 
+// draw this segment including buffers
+StraightSegment.prototype.draw = function(scene)
+{
+    /*this.segmentMesh[seg] = */ BABYLON.Mesh.CreateLines("lines", this.pointList, scene);
+    BABYLON.Mesh.CreateLines("upAxisLines", this.upAxisPointList, scene);
+    
+    
+}

@@ -108,6 +108,7 @@ RailTrack.prototype.getNextSegment = function(currentSegment)
     ++currentSegment;
     if (currentSegment == this.segments.length) {
         if (this.bLoop) {
+            console.debug("Line has been looped back to 0");
             return  0 ;
         }
         return -1;
@@ -128,67 +129,18 @@ RailTrack.prototype.updateAndDraw = function(dt, scene)
         return;
     }
 
-    var segsLength = this.segments.length;
-    var linesList = [];
-    
-    for (var seg = 0; seg < segsLength; ++seg) {
-        var currentSegment = this.segments[seg];
-
-        if (currentSegment.segmentType == SEGMENTTYPE.STRAIGHT) {
-            this.segmentMesh[seg] = BABYLON.Mesh.CreateLines("lines", currentSegment.pointList, scene);
-            BABYLON.Mesh.CreateLines("upAxisLines", currentSegment.upAxisPointList, scene);
-        }
-        else if (currentSegment.segmentType == SEGMENTTYPE.CIRCLE) {
-            this.segmentMesh[seg] = BABYLON.Mesh.CreateLines("circle", currentSegment.pointList, scene);
-             
-            // For debugging
-            /*for (i = 0; i < currentSegment.pointList.length; ++i) { 
-                var sph = BABYLON.Mesh.CreateSphere("sphere", 10.0, 0.5, scene);
-                sph.position = currentSegment.pointList[i];
-                var yellowMaterial = new BABYLON.StandardMaterial("sphTexture", scene);
-                yellowMaterial.diffuseColor = new BABYLON.Color3(1.0, 1.0, 0.0);
-                sph.material = yellowMaterial;
-            }*/
-
-            currentSegment.sphSP = BABYLON.Mesh.CreateSphere("sphere", 10.0, 0.5, scene);
-            currentSegment.sphSP.position = currentSegment.startPoint; // Using a vector
-            currentSegment.sphEP = BABYLON.Mesh.CreateSphere("sphere", 10.0, 0.5, scene);
-            currentSegment.sphEP.position = currentSegment.endPoint; // Using a vector
-
-            // Meshes exist inside Babylon, we do not need to maintain the reference to keep the mesh 'alive'
-            //BABYLON.Mesh.CreateLines("upAxisLines", currentSegment.upAxisPointList, scene);
-
-            // Draw this only if different from upAxis?
-            BABYLON.Mesh.CreateLines("normalLines", currentSegment.normalPointList, scene);
-        }
+    for (var seg = 0; seg < this.segments.length; ++seg) {
+        this.segments[seg].draw(scene);
     }
-
-
-
-   /*      this.lines = BABYLON.Mesh.CreateLines("lines", [
-        new BABYLON.Vector3(-10, 0, 0),
-        new BABYLON.Vector3(10, 0, 0),
-        new BABYLON.Vector3(0, 0, -10),
-        new BABYLON.Vector3(0, 0, 10)
-    ], scene);*/
 
     this.bNeedsDraw = false;
-
-    /*if (currentSegment == this.segments.length) {
-        if (this.bLoop) {
-            return  0 ;
-        }
-        return -1;
-    }
-
-    return currentSegment;*/
 }
 
 /**
  * Convert this track object to JSON
  * @return {String} JSON string
  */
-RailTrack.prototype.stringify = function()
+RailTrack.prototype.toJSON = function()
 {
     //console.debug(this.segments[0])
     var jsonString = "track = "
@@ -215,7 +167,7 @@ RailTrack.prototype.stringify = function()
  * Parse this JSON to set this track object
  * @oaram {String} JSON string
  */
-RailTrack.prototype.parseJSON = function(jsonObj)
+RailTrack.prototype.fromJSON = function(jsonObj)
 {
     console.debug(jsonObj);
     //logit(json);

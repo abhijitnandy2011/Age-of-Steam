@@ -473,4 +473,29 @@ CircularSegment.prototype.isBackPointWithinSegment = function(distOnSegment, cho
     };
 }
 
+CircularSegment.prototype.draw = function(scene)
+{
+    BABYLON.Mesh.CreateLines("circle", this.pointList, scene);
+     
+    // For debugging
+    /*for (i = 0; i < this.pointList.length; ++i) { 
+        var sph = BABYLON.Mesh.CreateSphere("sphere", 10.0, 0.5, scene);
+        sph.position = this.pointList[i];
+        var yellowMaterial = new BABYLON.StandardMaterial("sphTexture", scene);
+        yellowMaterial.diffuseColor = new BABYLON.Color3(1.0, 1.0, 0.0);
+        sph.material = yellowMaterial;
+    }*/
+
+    this.sphSP = BABYLON.Mesh.CreateSphere("sphere", 10.0, 0.5, scene);
+    this.sphSP.position = this.startPoint; // Using a vector
+    this.sphEP = BABYLON.Mesh.CreateSphere("sphere", 10.0, 0.5, scene);
+    this.sphEP.position = this.endPoint; // Using a vector
+
+    // Meshes exist inside Babylon, we do not need to maintain the reference to keep the mesh 'alive'
+    //BABYLON.Mesh.CreateLines("upAxisLines", this.upAxisPointList, scene);
+
+    // Draw this only if different from upAxis?
+    BABYLON.Mesh.CreateLines("normalLines", this.normalPointList, scene);
+}
+
 

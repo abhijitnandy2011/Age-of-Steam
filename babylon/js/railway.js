@@ -1,3 +1,5 @@
+var USE_RAILWAY_JSON_TRACKS = true
+
 /**
  * A Railway consists of multiple trains, multiple track segments, signals, platforms, personnel etc
  */
@@ -72,47 +74,56 @@ Railway.prototype.fromJSON = function(json)
     this.name = json.name;
     this.scene = json.scene;
 
-    // Create segments
- /*   for (idx = 0; idx < json.segments.length; ++idx ) {
-        var segObj;
-        var seg = json.segments[idx];
-        if (seg.t == 1) {
-            segObj = new StraightSegment({
-                startPoint : BABYLON.Vector3.FromArray(seg.s, 0),
-                direction  : BABYLON.Vector3.FromArray(seg.d, 0),
-                startUpAxis: BABYLON.Vector3.FromArray(seg.sua, 0),
-                segmentLength : seg.l
-            });
-        }
-        else if(seg.t == 2) {
-            var segInfo = {
-                 center : BABYLON.Vector3.FromArray(seg.c, 0),
-                 radius : seg.r,
-                 angle  : seg.a,
-                 startPoint : BABYLON.Vector3.FromArray(seg.s, 0),
-                 normal : BABYLON.Vector3.FromArray(seg.n, 0),
-                 startUpAxis : BABYLON.Vector3.FromArray(seg.sua, 0),
-                 bConvex : seg.cvx,
-                 bankingFunction: seg.bf
+    if (USE_RAILWAY_JSON_TRACKS) {
+        // Create segments - NOTE: The segments must be held by the Railway not by the RailTrack
+        // A RailTrack object uses the segments but does not own them - in fact the RailTrack 
+        // sequences the segments. The Railway just holds a map of segments but has no sequencing info
+        // But holding the segment map in the Railway & sharing the segments among tracks is more
+        // accurate - a signal change in a segment will be conveyed to both train on 2 separate 
+        // tracks but sharing the same segment - so the segments must be loaded by the railway,
+        // RailTrack objects simply refer to the segment objects via a segments[] array
+        for (idx = 0; idx < json.segments.length; ++idx ) {
+            var segObj;
+            var seg = json.segments[idx];
+            if (seg.t == 1) {
+                segObj = new StraightSegment({
+                    startPoint : BABYLON.Vector3.FromArray(seg.s, 0),
+                    direction  : BABYLON.Vector3.FromArray(seg.d, 0),
+                    startUpAxis: BABYLON.Vector3.FromArray(seg.sua, 0),
+                    segmentLength : seg.l
+                });
+            }
+            else if(seg.t == 2) {
+                var segInfo = {
+                     center : BABYLON.Vector3.FromArray(seg.c, 0),
+                     radius : seg.r,
+                     angle  : seg.a,
+                     startPoint : BABYLON.Vector3.FromArray(seg.s, 0),
+                     normal : BABYLON.Vector3.FromArray(seg.n, 0),
+                     startUpAxis : BABYLON.Vector3.FromArray(seg.sua, 0),
+                     bConvex : seg.cvx,
+                     bankingFunction: seg.bf
+                }
+
+                // This field is optional - we add the key if it was passed
+                if (seg.eua) {
+                    segInfo["endUpAxis"] =  BABYLON.Vector3.FromArray(seg.eua, 0);
+                }
+
+                segObj = new CircularSegment(segInfo);
+            }
+            else {
+                console.error("Railway.prototype.fromJSONObj: Incorrect segment type");
+                return;
             }
 
-            // This field is optional - we add the key if it was passed
-            if (seg.eua) {
-                segInfo["endUpAxis"] =  BABYLON.Vector3.FromArray(seg.eua, 0);
-            }
-
-            segObj = new CircularSegment(segInfo);
+            this.mapSegments[seg.id] = segObj;
         }
-        else {
-            console.error("Railway.prototype.fromJSONObj: Incorrect segment type");
-            return;
-        }
-
-        this.mapSegments[seg.id] = segObj;
-    }*/
-    
-    //crazyTrack(this.mapSegments);
-    realChairTrack(this.mapSegments);
+    }
+    else {
+        //crazyTrack(this.mapSegments);
+        realChairTrack(this.mapSegments);
+    }
 
     // Create tracks
     for (idx = 0; idx < json.tracks.length; ++idx ) {
@@ -150,7 +161,6 @@ Railway.prototype.fromJSON = function(json)
 
     // Currently focussed train
     this.focussedTrain = this.mapTrainIDvsTrainObj[json.focussedTrainID];
-    
 }
 
 Railway.prototype.getTrackAtID = function(id)
@@ -165,9 +175,8 @@ Railway.prototype.alert = function(msg)
 
 Railway.prototype.update = function(dt)
 {
-    
     console.log("------------update start-----------------");
-    
+
     // Update tracks
     for (var id in this.mapTrackIDvsTrackObj) {
         this.mapTrackIDvsTrackObj[id].updateAndDraw(dt, this.scene);
@@ -175,7 +184,7 @@ Railway.prototype.update = function(dt)
 
     // Update trains
     for (var id in this.mapTrainIDvsTrainObj) {        
-        if (this.mapTrainIDvsTrainObj[id].update(dt, this.scene)){
+        if (!this.mapTrainIDvsTrainObj[id].update(dt, this.scene)){
             // The train has run into an error - send false to deregister rendering func
             return false;
         }

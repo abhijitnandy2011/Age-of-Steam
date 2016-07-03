@@ -7,10 +7,10 @@ function rainHillTrialsRailway()
 
     var railwayObj = {
         name: 'Liverpool and Manchester Railway',
+        focussedTrainID: 1,
         segments: [],
         tracks: {},
         trains: {},
-        focussedTrainID: 1
     };
 
     railwayObj.segments = [

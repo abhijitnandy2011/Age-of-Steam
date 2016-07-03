@@ -1,24 +1,10 @@
 /**
  * Straight track segment
  */
-function StraightSegment(options)
+function StraightSegment(json)
 {
-    this.segmentType = SEGMENTTYPE.STRAIGHT;
-
-    // We always copy all options supplied to this object, creating keys as needed
-    for(var k in options) this[k] = options[k];
-
-    // Calc reqd stuff
-    this.endPoint = this.startPoint.add(this.direction.scale(this.segmentLength));
-    
-    if (this.startUpAxis == null) {
-        console.error("startUpAxis needs to be always specified.");
+    if (!this.fromJSON(json)) {
         return;
-    }
-
-    if (this.endUpAxis == null) {
-        // No variation in upAxis throughout segment
-        this.endUpAxis = this.startUpAxis;
     }
 
     // List of points to draw this segment
@@ -30,6 +16,56 @@ function StraightSegment(options)
     this.upAxisPointList = [];
     this.upAxisPointList.push(this.startPoint);
     this.upAxisPointList.push(this.startPoint.add(this.startUpAxis));
+}
+
+// This is not a member - its a factory function to produce the object
+StraightSegment.prototype.fromJSON = function(json)
+{
+    // Validation
+    if (json.t != SEGMENTTYPE.STRAIGHT) {
+        console.error("StraightSegment.fromJSON: Straight segment type should be " + SEGMENTTYPE.STRAIGHT);
+        return false;
+    }
+    if (json.sua == null) {
+        console.error("startUpAxis needs to be always specified.");
+        return false;
+    }
+
+    this.id = json.id;
+    this.segmentType = SEGMENTTYPE.STRAIGHT;
+
+    this.startPoint = BABYLON.Vector3.FromArray(json.s, 0),
+    this.direction = BABYLON.Vector3.FromArray(json.d, 0),
+    this.startUpAxis = BABYLON.Vector3.FromArray(json.sua, 0),
+    this.segmentLength = json.l
+
+    // This field is optional - we add the key if it was passed
+    if (json.eua) {
+        this.endUpAxis =  BABYLON.Vector3.FromArray(json.eua, 0);
+    }
+    else {
+        // No variation in upAxis throughout segment
+        this.endUpAxis = this.startUpAxis;
+    }
+
+    // Calculated stuff
+    this.endPoint = this.startPoint.add(this.direction.scale(this.segmentLength));
+
+    return true;
+}
+
+StraightSegment.prototype.toJSON = function()
+{
+    var json = {};
+
+    json.id = this.id;
+    json.t = this.segmentType;
+    json.s = this.startPoint.asArray();
+    json.d = this.direction.asArray();
+    json.sua = this.startUpAxis.asArray();
+    json.l = this.segmentLength;
+
+    return json;
 }
 
 StraightSegment.prototype.getUpAxis = function(distCovered)
@@ -226,11 +262,9 @@ StraightSegment.prototype.isBackPointWithinSegment = function(distOnSegment, len
     };
 }
 
-// draw this segment including buffers
+// draw this segment including sleepers
 StraightSegment.prototype.draw = function(scene)
 {
     /*this.segmentMesh[seg] = */ BABYLON.Mesh.CreateLines("lines", this.pointList, scene);
     BABYLON.Mesh.CreateLines("upAxisLines", this.upAxisPointList, scene);
-    
-    
 }

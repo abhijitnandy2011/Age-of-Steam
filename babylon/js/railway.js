@@ -58,8 +58,16 @@ function Railway(json)
 Railway.prototype.toJSON = function()
 {
     var json = {};
-    
+
+    json.name = this.name;
+    json.focussedTrainID = this.focussedTrain.id;
+
     // Add segments, their platforms & signals
+    json.segments = [];
+    for (var id in this.mapSegments) {
+        var segmentJSON = this.mapSegments[id].toJSON();
+        json.segments.push(segmentJSON);
+    }
 
     // Add tracks and their signals
 
@@ -83,41 +91,29 @@ Railway.prototype.fromJSON = function(json)
         // tracks but sharing the same segment - so the segments must be loaded by the railway,
         // RailTrack objects simply refer to the segment objects via a segments[] array
         for (idx = 0; idx < json.segments.length; ++idx ) {
-            var segObj;
-            var seg = json.segments[idx];
-            if (seg.t == 1) {
-                segObj = new StraightSegment({
-                    startPoint : BABYLON.Vector3.FromArray(seg.s, 0),
-                    direction  : BABYLON.Vector3.FromArray(seg.d, 0),
-                    startUpAxis: BABYLON.Vector3.FromArray(seg.sua, 0),
-                    segmentLength : seg.l
-                });
+
+            var segJSON = json.segments[idx];
+            if (segJSON.t == SEGMENTTYPE.STRAIGHT) {
+                // Call factory method in segment class to get the object
+                var segObj = new StraightSegment(segJSON);
+                if (segObj == null ) {
+                    console.error("Railway.prototype.fromJSON: Straight segment could not be created");
+                    return false;
+                }
             }
-            else if(seg.t == 2) {
-                var segInfo = {
-                     center : BABYLON.Vector3.FromArray(seg.c, 0),
-                     radius : seg.r,
-                     angle  : seg.a,
-                     startPoint : BABYLON.Vector3.FromArray(seg.s, 0),
-                     normal : BABYLON.Vector3.FromArray(seg.n, 0),
-                     startUpAxis : BABYLON.Vector3.FromArray(seg.sua, 0),
-                     bConvex : seg.cvx,
-                     bankingFunction: seg.bf
+            else if(segJSON.t == SEGMENTTYPE.CIRCLE) {
+                var segObj = new CircularSegment(segJSON);
+                if (segObj == null ) {
+                    console.error("Railway.prototype.fromJSON: Circular segment could not be created");
+                    return false;
                 }
-
-                // This field is optional - we add the key if it was passed
-                if (seg.eua) {
-                    segInfo["endUpAxis"] =  BABYLON.Vector3.FromArray(seg.eua, 0);
-                }
-
-                segObj = new CircularSegment(segInfo);
             }
             else {
-                console.error("Railway.prototype.fromJSONObj: Incorrect segment type");
+                console.error("Railway.prototype.fromJSON: Incorrect segment type");
                 return;
             }
 
-            this.mapSegments[seg.id] = segObj;
+            this.mapSegments[segJSON.id] = segObj;
         }
     }
     else {

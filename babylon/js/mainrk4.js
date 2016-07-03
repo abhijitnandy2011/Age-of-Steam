@@ -244,9 +244,9 @@ function createRailway(scene, json)
 {
     // Downloaded json ignored currently - test.json is not correct yet
 
-    var obj = rainHillTrialsRailway();
-    obj.scene = scene;
-    gRailway = new Railway(obj);
+    var sampleJSON = rainHillTrialsRailway();
+    sampleJSON.scene = scene;
+    gRailway = new Railway(sampleJSON);
 }
 
 // Update loco & geometry

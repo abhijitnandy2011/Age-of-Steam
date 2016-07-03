@@ -42,6 +42,7 @@ Train.prototype.toJSON = function()
 Train.prototype.fromJSON = function(json)
 {
     this.name = json.name;
+    this.id   = json.id;
 
     this.fPrevSpeed = 0;   // helps to find whether train stopped in this iteration or before 
     this.fSpeed = json.fSpeed;

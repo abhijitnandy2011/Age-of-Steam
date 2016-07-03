@@ -1,40 +1,10 @@
 /**
  * Circular track segment
  */
-function CircularSegment(options){
-    this.segmentType = SEGMENTTYPE.CIRCLE;
-
-    // We always copy all options supplied to this object, creating keys as needed
-    for(var k in options) this[k] = options[k];
-
-    // If this.bankingFunction is specified, it will be used in this.getUpAxis(). 
-    // For this this.endUpAxis is needed.
-
-    // Calc reqd stuff
-    this.segmentLength = this.radius * this.angle;
-    this.unitvecStartRadius = this.startPoint.subtract(this.center).normalize();
-
-    this.rotMatrix = new BABYLON.Matrix();
-    this.quat = BABYLON.Quaternion.RotationAxis(this.normal, this.angle);
-    this.quat.toRotationMatrix(this.rotMatrix);
-    this.unitvecEndRadius = BABYLON.Vector3.TransformCoordinates(this.unitvecStartRadius, this.rotMatrix);
-
-    this.endPoint = this.unitvecEndRadius.scale(this.radius);
-    this.endPoint.addInPlace(this.center);
-
-    if (this.startUpAxis == null) {
-        console.error("A circular segment is either a 'plane' or convex/concave." + 
-        "startUpAxis needs to be always specified.");
+function CircularSegment(json)
+{
+    if (!this.fromJSON(json)) { // RESUME CODING HERE !!
         return;
-    }
-
-    if (this.endUpAxis == null) {
-        // No twist in upAxis, take account of bConvex & calc
-        this.endUpAxis = this.getDefaultUpAxis(this.segmentLength);
-        if (this.endUpAxis == null) {
-            console.error("Could not calculate endUpAxis.");
-            return;
-        }
     }
 
     // List of points to draw this segment. We have amember to generate the points beforehand
@@ -46,6 +16,86 @@ function CircularSegment(options){
     this.upAxisPointList = [];
     this.generatePointList(Math.PI/60);
 
+}
+
+// This is not a member - its a factory function to produce the object
+CircularSegment.prototype.fromJSON = function(json)
+{
+    // Validation
+    if (json.t != SEGMENTTYPE.CIRCLE) {
+        console.error("CircularSegment.prototype.fromJSON: Circular segment type should be " + SEGMENTTYPE.CIRCLE);
+        return false;
+    }
+    if (json.sua == null) {
+        console.error("CircularSegment.prototype.fromJSON: startUpAxis needs to be always specified.");
+        return false;
+    }
+
+    this.id = json.id;
+    this.segmentType = SEGMENTTYPE.CIRCLE;
+
+    this.center = BABYLON.Vector3.FromArray(json.c, 0);
+    this.radius = json.r;
+    this.angle = json.a;
+    this.startPoint = BABYLON.Vector3.FromArray(json.s, 0);
+    this.normal = BABYLON.Vector3.FromArray(json.n, 0);
+    this.startUpAxis = BABYLON.Vector3.FromArray(json.sua, 0);
+    this.bConvex = json.cvx;
+    this.bankingFunction = json.bf;
+    // This field is optional - we add the key if it was passed
+    if (json.eua) {
+        this.endUpAxis =  BABYLON.Vector3.FromArray(json.eua, 0);
+    }
+
+    // Calculated stuff
+    this.segmentLength = this.radius * this.angle;
+    this.unitvecStartRadius = this.startPoint.subtract(this.center).normalize();
+
+    this.rotMatrix = new BABYLON.Matrix();
+    this.quat = BABYLON.Quaternion.RotationAxis(this.normal, this.angle);
+    this.quat.toRotationMatrix(this.rotMatrix);
+    this.unitvecEndRadius = BABYLON.Vector3.TransformCoordinates(this.unitvecStartRadius, this.rotMatrix);
+
+    this.endPoint = this.unitvecEndRadius.scale(this.radius);
+    this.endPoint.addInPlace(this.center);
+
+    // If this.bankingFunction is specified, it will be used in this.getUpAxis(). 
+    // this.getUpAxis() is always called while drawing rail vehicles on a segment
+    // this.endUpAxis is needed in this.getUpAxis()
+    if (this.endUpAxis == null) {
+        // No twist in upAxis, take account of bConvex & calc
+        this.endUpAxis = this.getDefaultUpAxis(this.segmentLength);
+        if (this.endUpAxis == null) {
+            console.error("CircularSegment.prototype.fromJSON: Could not calculate endUpAxis.");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+CircularSegment.prototype.toJSON = function()
+{
+    var json = {};
+
+    json.id = this.id;
+    json.t = 2;
+    json.c = this.center.asArray();
+    json.r = this.radius;
+    json.a = this.angle;
+    json.s = this.startPoint.asArray();
+    json.n = this.normal.asArray();
+    json.sua = this.startUpAxis.asArray();
+
+    if (json.eua) {
+        json.eua = this.endUpAxis.asArray();
+    }
+
+    if (json.cvx) {
+        json.cvx = this.cvx;
+    }
+
+    return json;
 }
 
 // Gets default upAxis which is the radial vector without twist for the convex case. Is based on distance covered on the segment as for the convex case, the 
@@ -497,5 +547,3 @@ CircularSegment.prototype.draw = function(scene)
     // Draw this only if different from upAxis?
     BABYLON.Mesh.CreateLines("normalLines", this.normalPointList, scene);
 }
-
-
